@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    AbpPlugin.Build: the MSBuild targets that turn a plugin's build into the folder and the zip an
+    AbpPlugin host installs, as a NuGet package. It has no assembly: NuGet imports build/AbpPlugin.Build.props and
+    build/AbpPlugin.Build.targets into the plugin's project. An application may ship the same targets under its own
+    names, in a package of its own that sets its names over them.
+  -->
+  <PropertyGroup>
+    <Description>Builds a plugin for an AbpPlugin host into the folder and the zip the host installs: its assembly and symbols, its manifest with the version, its web and phone bundles, its texts and its docs, signed when given a key.</Description>
+    <PackageTags>abp;plugin;msbuild</PackageTags>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <!-- No assembly, so no symbols package either. -->
+    <IncludeSymbols>false</IncludeSymbols>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <!-- No lib/ folder on purpose: the package is targets only. -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="build\**" Pack="true" PackagePath="build\" />
+  </ItemGroup>
+
+</Project>

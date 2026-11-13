@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The package format of AbpPlugin: signing keys and their IDs, a package's digest and signature file, versions and ranges, and what a manifest says of itself. Only .NET's own types, so a marketplace, a build or a signing tool reads a package as the host does.</Description>
+    <RootNamespace>AbpPlugin.Packaging</RootNamespace>
+  </PropertyGroup>
+
+</Project>

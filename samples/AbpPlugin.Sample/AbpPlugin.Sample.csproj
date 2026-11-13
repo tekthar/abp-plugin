@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- AbpPlugin.Build's props, as the package's NuGet import gives a plugin outside this repository. -->
+  <Import Project="..\..\src\AbpPlugin.Build\build\AbpPlugin.Build.props" />
+
+  <PropertyGroup>
+    <Description>A sample plugin built on AbpPlugin.Sdk alone: its entry, table, seeder, settings, files, secrets, local event, endpoints and health check, run by any AbpPlugin host. AbpPlugin.Host.Tests builds it at two versions, signs it and runs its whole life on the sample host.</Description>
+    <IsPackable>false</IsPackable>
+    <PluginKey>acme.abp-sample</PluginKey>
+    <PluginVersion Condition="'$(PluginVersion)' == ''">0.1.0</PluginVersion>
+    <Version>$(PluginVersion)</Version>
+    <OutputPath>bin\$(Configuration)\v$(PluginVersion)\</OutputPath>
+    <!-- The package goes beside the project, as artifacts/plugins/{key}-{version}/; no zip unless asked. -->
+    <AbpPluginZip Condition="'$(AbpPluginZip)' == ''">false</AbpPluginZip>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AbpPlugin.Sdk\AbpPlugin.Sdk.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Shared with the host at runtime; referenced here for compiling and for dotnet ef. -->
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <Import Project="..\..\src\AbpPlugin.Build\build\AbpPlugin.Build.targets" />
+
+</Project>

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>A plugin host for ABP applications: installs signed plugin packages at run time, each in a load context of its own with its own schema, and upgrades, unloads and removes them without a restart.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Volo.Abp.AspNetCore" Version="$(AbpVersion)" />
+    <PackageReference Include="Volo.Abp.EntityFrameworkCore.PostgreSql" Version="$(AbpVersion)" />
+    <PackageReference Include="Volo.Abp.BlobStoring" Version="$(AbpVersion)" />
+    <PackageReference Include="AbpCluster" Version="0.4.1" />
+    <PackageReference Include="Cronos" Version="0.13.0" />
+    <ProjectReference Include="..\AbpPlugin.Sdk\AbpPlugin.Sdk.csproj" />
+    <ProjectReference Include="..\AbpPlugin.Packaging\AbpPlugin.Packaging.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The unit tests reach the host's internals; applications use its public API. -->
+    <InternalsVisibleTo Include="AbpPlugin.Tests" />
+  </ItemGroup>
+
+</Project>

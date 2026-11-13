@@ -1,0 +1,14 @@
+{
+  "key": "acme.abp-sample",
+  "name": "AbpPlugin sample",
+  "description": "A plugin built on AbpPlugin.Sdk alone: its table, seeder, settings, files, secrets, a local event, endpoints and a health check, run by the host.",
+  "version": "__VERSION__",
+  "kind": "plugin",
+  "vendor": {
+    "name": "Acme"
+  },
+  "server": {
+    "assembly": "AbpPlugin.Sample.dll",
+    "entry": "AbpPlugin.Sample.SamplePlugin"
+  }
+}

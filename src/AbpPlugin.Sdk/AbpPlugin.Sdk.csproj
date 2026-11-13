@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>What a plugin references to run in an AbpPlugin host: its entry, registrations, database context, jobs, events, endpoints, settings, files and the rest of the plugin runtime.</Description>
+    <RootNamespace>AbpPlugin</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <Description>A host of AbpPlugin alone: an ABP application that installs signed plugin packages at run time, upgrades, disables and removes them, with the host's tables in its own context and its files on disk. What AbpPlugin.Host.Tests proves.</Description>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AbpPlugin\AbpPlugin.csproj" />
+    <PackageReference Include="Volo.Abp.Autofac" Version="$(AbpVersion)" />
+    <PackageReference Include="Volo.Abp.BlobStoring.FileSystem" Version="$(AbpVersion)" />
+    <!-- For its migrations (dotnet ef migrations add), as a host has for its own. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

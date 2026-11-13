@@ -1,0 +1,119 @@
+<Project>
+  <!--
+    AbpPlugin.Build: packs a plugin for an AbpPlugin host after its build:
+    binaries, the manifest (AbpPluginManifestFile, plugin.json, from AbpPluginManifestTemplate, plugin.template.json,
+    with __VERSION__ replaced), the web bundle (web/dist, when built), the phone's (mobile/dist/{android,ios}, when
+    built), the texts (web/messages, or messages/ for a plugin without a web part) and the docs for people and agents
+    (docs/), into one folder; then signs it when given a key, and, unless told not to, zips that folder for upload.
+
+    A plugin project sets PluginKey (its app ID) and PluginVersion. What it may set besides, all optional:
+    - AbpPluginRoot: the folder that holds web/, mobile/, messages/ and docs/ (the project's folder);
+    - AbpPluginDocsDir: the plugin's docs (AbpPluginRoot/docs/);
+    - AbpPluginArtifacts: where the package goes (AbpPluginRoot/artifacts/), as plugins/{key}-{version}/ and
+      {key}-{version}.zip;
+    - AbpPluginPackageDir: the package's folder itself, overriding the above;
+    - AbpPluginZip: false for the folder only;
+    - AbpPluginBuildWeb: true to build web/ before packing (npm when it has package-lock.json, pnpm otherwise);
+    - AbpPluginExcludeHostAssemblies: false to keep the host's own assemblies (AbpPluginHostAssemblies, and the
+      application's in AbpPluginMoreHostAssemblies) in the package. They're left out by default: the host loads its own
+      copies whatever a plugin carries;
+    - AbpPluginSigningKey and AbpPluginSigner: a publisher's private key (private.pem) and the name it signs as, to sign
+      the package before it's zipped, with the signing tool (dotnet tool install -g AbpPlugin.Sign);
+      AbpPluginSignCommand runs it another way ("dotnet tool run abp-plugin-sign" for a tool manifest's).
+
+    An application's own package of these targets sets its names over them: AbpPluginDisplayName
+    and AbpPluginZipHint for the messages, AbpPluginPropertyPrefix for the properties its errors name.
+  -->
+  <PropertyGroup>
+    <AbpPluginRoot Condition="'$(AbpPluginRoot)' == ''">$(MSBuildProjectDirectory)</AbpPluginRoot>
+    <AbpPluginRoot Condition="!HasTrailingSlash('$(AbpPluginRoot)')">$(AbpPluginRoot)\</AbpPluginRoot>
+    <AbpPluginDocsDir Condition="'$(AbpPluginDocsDir)' == ''">$(AbpPluginRoot)docs\</AbpPluginDocsDir>
+    <AbpPluginDocsDir Condition="!HasTrailingSlash('$(AbpPluginDocsDir)')">$(AbpPluginDocsDir)\</AbpPluginDocsDir>
+    <AbpPluginArtifacts Condition="'$(AbpPluginArtifacts)' == ''">$(AbpPluginRoot)artifacts\</AbpPluginArtifacts>
+    <AbpPluginArtifacts Condition="!HasTrailingSlash('$(AbpPluginArtifacts)')">$(AbpPluginArtifacts)\</AbpPluginArtifacts>
+    <AbpPluginZip Condition="'$(AbpPluginZip)' == ''">true</AbpPluginZip>
+    <AbpPluginBuildWeb Condition="'$(AbpPluginBuildWeb)' == ''">false</AbpPluginBuildWeb>
+    <AbpPluginExcludeHostAssemblies Condition="'$(AbpPluginExcludeHostAssemblies)' == ''">true</AbpPluginExcludeHostAssemblies>
+    <!-- The host's own assemblies, by file name under the output folder (wildcards allowed). -->
+    <AbpPluginHostAssemblies Condition="'$(AbpPluginHostAssemblies)' == ''">AbpPlugin.Sdk.dll;Abp*.Contracts.dll;Microsoft.EntityFrameworkCore.dll;Microsoft.EntityFrameworkCore.Abstractions.dll;Microsoft.EntityFrameworkCore.Relational.dll</AbpPluginHostAssemblies>
+    <AbpPluginSignCommand Condition="'$(AbpPluginSignCommand)' == ''">abp-plugin-sign</AbpPluginSignCommand>
+    <AbpPluginDisplayName Condition="'$(AbpPluginDisplayName)' == ''">Plugin</AbpPluginDisplayName>
+    <AbpPluginPropertyPrefix Condition="'$(AbpPluginPropertyPrefix)' == ''">AbpPlugin</AbpPluginPropertyPrefix>
+    <AbpPluginManifestFile Condition="'$(AbpPluginManifestFile)' == ''">plugin.json</AbpPluginManifestFile>
+    <AbpPluginManifestTemplate Condition="'$(AbpPluginManifestTemplate)' == ''">$(MSBuildProjectDirectory)\plugin.template.json</AbpPluginManifestTemplate>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="web\**;mobile\**" />
+    <Compile Remove="web\**;mobile\**" />
+    <Content Remove="web\**;mobile\**" />
+  </ItemGroup>
+
+  <Target Name="BuildAbpPluginWeb" BeforeTargets="PackAbpPlugin" Condition="'$(AbpPluginBuildWeb)' == 'true' And Exists('$(AbpPluginRoot)web\package.json')">
+    <PropertyGroup>
+      <_AbpPluginWebDir>$(AbpPluginRoot)web\</_AbpPluginWebDir>
+      <!-- npm when the web part has npm's lock file, pnpm otherwise; a lock file is kept to, a missing one is made. -->
+      <_AbpPluginWebTool Condition="Exists('$(_AbpPluginWebDir)package-lock.json') And !Exists('$(_AbpPluginWebDir)pnpm-lock.yaml')">npm</_AbpPluginWebTool>
+      <_AbpPluginWebTool Condition="'$(_AbpPluginWebTool)' == ''">pnpm</_AbpPluginWebTool>
+      <_AbpPluginWebInstall Condition="'$(_AbpPluginWebTool)' == 'npm'">npm ci</_AbpPluginWebInstall>
+      <_AbpPluginWebInstall Condition="'$(_AbpPluginWebTool)' == 'pnpm' And Exists('$(_AbpPluginWebDir)pnpm-lock.yaml')">pnpm install --frozen-lockfile</_AbpPluginWebInstall>
+      <_AbpPluginWebInstall Condition="'$(_AbpPluginWebInstall)' == ''">pnpm install</_AbpPluginWebInstall>
+    </PropertyGroup>
+    <Exec Command="$(_AbpPluginWebInstall)" WorkingDirectory="$(_AbpPluginWebDir)" Condition="!Exists('$(_AbpPluginWebDir)node_modules')" />
+    <Exec Command="$(_AbpPluginWebTool) run build" WorkingDirectory="$(_AbpPluginWebDir)" />
+  </Target>
+
+  <Target Name="PackAbpPlugin" AfterTargets="Build">
+    <Error Condition="'$(PluginKey)' == ''" Text="Set PluginKey, the plugin's app ID (publisher.app), in the project." />
+    <Error Condition="'$(PluginVersion)' == ''" Text="Set PluginVersion in the project." />
+    <PropertyGroup>
+      <_AbpPluginPackageDir>$(AbpPluginPackageDir)</_AbpPluginPackageDir>
+      <_AbpPluginPackageDir Condition="'$(_AbpPluginPackageDir)' == ''">$(AbpPluginArtifacts)plugins\$(PluginKey)-$(PluginVersion)\</_AbpPluginPackageDir>
+      <ManifestText>$([System.IO.File]::ReadAllText('$(AbpPluginManifestTemplate)').Replace('__VERSION__', '$(PluginVersion)'))</ManifestText>
+      <_AbpPluginHostNames>$(AbpPluginHostAssemblies);$(AbpPluginMoreHostAssemblies)</_AbpPluginHostNames>
+      <_AbpPluginHostNames>$(_AbpPluginHostNames.Replace(';;', ';').Trim(';'))</_AbpPluginHostNames>
+      <!-- Each name under the output folder. A property function's result comes back escaped, so it's unescaped where
+           it's used: the list splits at its semicolons and its wildcards match. -->
+      <_AbpPluginHostFiles Condition="'$(_AbpPluginHostNames)' != ''">$(OutDir)$(_AbpPluginHostNames.Replace(';', ';$(OutDir)'))</_AbpPluginHostFiles>
+    </PropertyGroup>
+    <ItemGroup>
+      <!-- Design-time tooling stays out of the package; host-shared assemblies are harmless but ignored by the loader. -->
+      <PluginBinaries Include="$(OutDir)**\*.*" Exclude="$(OutDir)**\*.pdb;$(OutDir)BuildHost-*\**;$(OutDir)**\Microsoft.CodeAnalysis*.dll;$(OutDir)Microsoft.EntityFrameworkCore.Design.dll;$(OutDir)Microsoft.Build*.dll;$(OutDir)Humanizer.dll;$(OutDir)Mono.TextTemplating.dll;$(OutDir)Microsoft.VisualStudio.SolutionPersistence.dll;$(OutDir)**\*.resources.dll" />
+      <!-- The host's own assemblies: it loads its copies whatever a plugin carries, so the package needn't. -->
+      <PluginBinaries Remove="$([MSBuild]::Unescape('$(_AbpPluginHostFiles)'))" Condition="'$(AbpPluginExcludeHostAssemblies)' == 'true' And '$(_AbpPluginHostFiles)' != ''" />
+      <!-- The plugin's own symbols beside its DLL: a debugger attached to the server steps into it, and its
+           exceptions log their file and line. Its dependencies' symbols stay out. -->
+      <PluginBinaries Include="$(OutDir)$(TargetName).pdb" Condition="Exists('$(OutDir)$(TargetName).pdb')" />
+      <PluginWeb Include="$(AbpPluginRoot)web\dist\**\*.*" />
+      <PluginMobile Include="$(AbpPluginRoot)mobile\dist\**\*.*" />
+      <!-- The plugin's texts by language: the server serves them, admins translate them. -->
+      <PluginMessages Include="$(AbpPluginRoot)web\messages\*.json" />
+      <!-- A plugin without a web part keeps its texts (its name and description) in messages/. -->
+      <PluginMessages Include="$(AbpPluginRoot)messages\*.json" />
+      <!-- Its docs: Markdown pages and the images they show, read by the Docs page and read_docs. -->
+      <PluginDocs Include="$(AbpPluginDocsDir)**\*.*" />
+    </ItemGroup>
+    <RemoveDir Directories="$(_AbpPluginPackageDir)" />
+    <Copy SourceFiles="@(PluginBinaries)" DestinationFiles="@(PluginBinaries->'$(_AbpPluginPackageDir)%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="@(PluginWeb)" DestinationFiles="@(PluginWeb->'$(_AbpPluginPackageDir)web\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="@(PluginMobile)" DestinationFiles="@(PluginMobile->'$(_AbpPluginPackageDir)mobile\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="@(PluginMessages)" DestinationFolder="$(_AbpPluginPackageDir)messages" />
+    <Copy SourceFiles="@(PluginDocs)" DestinationFiles="@(PluginDocs->'$(_AbpPluginPackageDir)docs\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <WriteLinesToFile File="$(_AbpPluginPackageDir)$(AbpPluginManifestFile)" Lines="$(ManifestText)" Overwrite="true" />
+    <Message Importance="high" Text="$(AbpPluginDisplayName) $(PluginKey) $(PluginVersion) packed to $(_AbpPluginPackageDir)" />
+  </Target>
+
+  <!-- Signs the packed folder (the signature beside the manifest) when given a key, so the zip carries the signature. -->
+  <Target Name="SignAbpPlugin" AfterTargets="PackAbpPlugin" Condition="'$(AbpPluginSigningKey)' != ''">
+    <Error Condition="'$(AbpPluginSigner)' == ''" Text="Set $(AbpPluginPropertyPrefix)Signer, the name a site shows for your key, beside $(AbpPluginPropertyPrefix)SigningKey." />
+    <Error Condition="!Exists('$(AbpPluginSigningKey)')" Text="$(AbpPluginPropertyPrefix)SigningKey names no file: $(AbpPluginSigningKey)" />
+    <Exec Command="$(AbpPluginSignCommand) sign --key &quot;$(AbpPluginSigningKey)&quot; --signer &quot;$(AbpPluginSigner)&quot; &quot;$(_AbpPluginPackageDir.TrimEnd('\'))&quot;" />
+    <Message Importance="high" Text="$(AbpPluginDisplayName) $(PluginKey) $(PluginVersion) signed by $(AbpPluginSigner)" />
+  </Target>
+
+  <Target Name="ZipAbpPlugin" AfterTargets="SignAbpPlugin" Condition="'$(AbpPluginZip)' == 'true'">
+    <Warning Condition="!Exists('$(AbpPluginRoot)web\dist\remoteEntry.js') And Exists('$(AbpPluginRoot)web\package.json')" Text="The zip has no web part: build web/ first (pnpm build), or build with -p:$(AbpPluginPropertyPrefix)BuildWeb=true." />
+    <ZipDirectory SourceDirectory="$(_AbpPluginPackageDir)" DestinationFile="$(AbpPluginArtifacts)$(PluginKey)-$(PluginVersion).zip" Overwrite="true" />
+    <Message Importance="high" Text="$(AbpPluginDisplayName) zip: $(AbpPluginArtifacts)$(PluginKey)-$(PluginVersion).zip$(AbpPluginZipHint)" />
+  </Target>
+</Project>

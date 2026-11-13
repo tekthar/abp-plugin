@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Signs plugin packages for an AbpPlugin host and makes signing keys: what a build and a plugin's publisher run. Installed as a .NET tool, the command is abp-plugin-sign.</Description>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>AbpPlugin.Sign</RootNamespace>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>abp-plugin-sign</ToolCommandName>
+    <PackageTags>abp;plugin;signing;dotnet-tool</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AbpPlugin.Packaging\AbpPlugin.Packaging.csproj" />
+  </ItemGroup>
+
+</Project>

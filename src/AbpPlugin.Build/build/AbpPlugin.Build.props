@@ -1,0 +1,9 @@
+<Project>
+  <!--
+    AbpPlugin.Build, imported before the plugin's project: a plugin is loaded into its own context
+    by the host, so it builds as a dynamically loaded library. The rest is in AbpPlugin.Build.targets.
+  -->
+  <PropertyGroup>
+    <EnableDynamicLoading Condition="'$(EnableDynamicLoading)' == ''">true</EnableDynamicLoading>
+  </PropertyGroup>
+</Project>
