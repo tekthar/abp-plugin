@@ -32,8 +32,15 @@ public sealed record PluginPackageFormat
     /// <summary>The mark a host writes on a package it unpacked; the digest leaves it out.</summary>
     public string Marker { get; init; } = ".plugin-package";
 
-    /// <summary>Names the mark had before, still read.</summary>
+    /// <summary>Names the mark had before, still read, and left out of the digest as the mark is.</summary>
     public IReadOnlyList<string> FormerMarkers { get; init; } = [];
+
+    /// <summary>
+    /// Files at a package's root that the digest leaves out, besides the signature and the marks: ones added after the
+    /// publisher signed, such as a marketplace's countersignature. A file named here can't be vouched for by the
+    /// publisher's signature, so name only files the host doesn't run or read as the plugin's.
+    /// </summary>
+    public IReadOnlyList<string> Unsigned { get; init; } = [];
 
     /// <summary>
     /// What a signature is made over, before the digest: it says the digest is one of this format's packages, so a

@@ -26,7 +26,8 @@ public static class PluginSignature
     public static string SignedPrefix => PluginPackageFormat.Current.SignedPrefix;
 
     /// <summary>Files the digest leaves out: the signature itself, and the mark a server writes on a package it unpacked (<c>PluginPackages</c>).</summary>
-    private static string[] NotSigned => [FileName, PluginPackageFormat.Current.Marker];
+    private static string[] NotSigned =>
+        [FileName, PluginPackageFormat.Current.Marker, .. PluginPackageFormat.Current.FormerMarkers, .. PluginPackageFormat.Current.Unsigned];
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 

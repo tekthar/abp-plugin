@@ -85,8 +85,9 @@ SemanticVersion.Parse("1.2.3").Satisfies(">=1.0.0 <2.0.0");   // true
 A package is signed with ECDSA on the P-256 curve with SHA-256 (`ECDSA-P256-SHA256`), built into .NET on every
 platform.
 
-1. **The listing.** Every file in the folder, at any depth, except `plugin-signature.json` and `.plugin-package` at
-   its root: its path relative to the folder, with `/`, and the SHA-256 of its bytes in lowercase hex. Sorted by path,
+1. **The listing.** Every file in the folder, at any depth, except these at its root: the signature
+   (`plugin-signature.json`), the mark (`.plugin-package`) and the format's former marks, and the format's `Unsigned`
+   files (none by default): its path relative to the folder, with `/`, and the SHA-256 of its bytes in lowercase hex. Sorted by path,
    ordinal. `PluginSignature.Listing(folder)` gives it, so a client can check files one by one.
 2. **The digest.** For each file in the listing, its path, `\n`, its hash, `\n`, all joined; the SHA-256 of that text
    in UTF-8, in lowercase hex. `PluginSignature.Digest(folder)`.
@@ -166,6 +167,7 @@ PluginPackageFormat.Current = new PluginPackageFormat
     Signature = "my-signature.json",
     Marker = ".my-package",
     FormerMarkers = [".old-package"],
+    Unsigned = ["my-countersignature.json"],   // added after the publisher signed
     SignedPrefix = "my-plugin-signature/1\n",
     PackageExtensions = [".zip", ".mypkg"],
 };
@@ -175,7 +177,8 @@ PluginPackageFormat.Current = new PluginPackageFormat
 |---|---|---|
 | `Manifest` | `plugin.json` | the manifest's file name; former names are still read |
 | `Signature` | `plugin-signature.json` | the signature's file name, left out of the digest |
-| `Marker` | `.plugin-package` | the mark a server writes on an unpacked package, left out of the digest; former marks are still read |
+| `Marker` | `.plugin-package` | the mark a server writes on an unpacked package, left out of the digest; former marks are still read, and left out too |
+| `Unsigned` | none | files at a package's root left out of the digest, for ones added after the publisher signed, such as a marketplace's countersignature; the publisher's signature doesn't vouch for them, so name only files the host doesn't run |
 | `SignedPrefix` | `abp-plugin-signature/1\n` | what signatures are made over: packages signed under one prefix don't verify under another |
 | `PackageExtensions` | `.zip` | the extensions a host unzips |
 

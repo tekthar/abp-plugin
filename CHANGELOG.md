@@ -6,6 +6,19 @@ All notable changes to AbpPlugin are written here. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-14
+
+### Added
+
+- `PluginPackageFormat.Unsigned`: files at a package's root that the digest leaves out besides the signature and the
+  marks, for ones added after the publisher signed, such as a marketplace's countersignature. Without it, a
+  countersigned package never matched its signature once unpacked.
+
+### Fixed
+
+- The digest leaves out a format's former marks (`FormerMarkers`) as it leaves out the mark, so a folder a host
+  unpacked under a former mark's name still matches its signature.
+
 ## [0.1.0] - 2026-11-14
 
 The first release: the plugin host Toda had built in, as five packages with neutral names and AbpPlugin's own package

@@ -101,6 +101,33 @@ public sealed class PackagingTests : IDisposable
     }
 
     [Fact]
+    public void A_formats_unsigned_files_and_former_marks_are_left_out_of_the_digest()
+    {
+        PluginPackageFormat before = PluginPackageFormat.Current;
+        PluginPackageFormat.Current = new() { FormerMarkers = [".old-package"], Unsigned = ["countersignature.json"] };
+        try
+        {
+            File.WriteAllText(Path.Combine(_folder, PluginPackageFormat.Current.Manifest), """{ "key": "acme.sample", "version": "1.0.0" }""");
+            (string privatePem, string publicPem, _) = PluginSignature.CreateKey();
+            PluginSignature.Sign(_folder, privatePem, "Acme");
+            byte[] key = PluginSignature.ReadPublicKey(publicPem)!;
+
+            File.WriteAllText(Path.Combine(_folder, "countersignature.json"), "{ }");
+            File.WriteAllText(Path.Combine(_folder, ".old-package"), "hash");
+            PluginSignatureFile read = PluginSignature.Read(_folder)!;
+            Assert.True(PluginSignature.Matches(read, _folder));
+            Assert.True(PluginSignature.Verify(read, _folder, key));
+
+            File.WriteAllText(Path.Combine(_folder, "other.json"), "{ }");
+            Assert.False(PluginSignature.Matches(read, _folder));
+        }
+        finally
+        {
+            PluginPackageFormat.Current = before;
+        }
+    }
+
+    [Fact]
     public void A_file_changed_added_or_removed_after_signing_breaks_the_signature()
     {
         File.WriteAllText(Path.Combine(_folder, PluginPackageFormat.Current.Manifest), """{ "key": "acme.sample", "version": "1.0.0" }""");
