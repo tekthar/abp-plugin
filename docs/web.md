@@ -72,7 +72,7 @@ context.Services.AddSingleton<IPluginWebSections, MyWebSections>();
 
 The page registers the listed remotes with Module Federation's runtime and loads what each exposes, sharing its own
 modules (React, its design system) with them. The browser package
-[`@tekthar/abp-plugin-web`](../packages/plugin-web/README.md) does that with no framework of its own, and a React
+[`@abpjs/plugin-web`](../packages/plugin-web/README.md) does that with no framework of its own, and a React
 adapter beside it:
 
 ```ts

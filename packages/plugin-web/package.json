@@ -1,5 +1,5 @@
 {
-  "name": "@tekthar/abp-plugin-web",
+  "name": "@abpjs/plugin-web",
   "version": "0.2.0",
   "description": "Plugins' web parts in the page for an AbpPlugin host: registers the Module Federation remotes the server lists and loads what they expose, sharing the application's own modules. No framework of its own; a React adapter beside it.",
   "license": "Apache-2.0",

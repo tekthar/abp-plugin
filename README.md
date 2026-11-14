@@ -58,7 +58,7 @@ removed while the application keeps running. A plugin isn't an ABP module: it sa
 |---|---|---|
 | `AbpPlugin` | The host: `AbpPluginModule`, `PluginManager`, `PluginTrust`, `PluginRuntime`, the endpoint dispatcher, the seams and their defaults, the table mapping | ABP 10.6 (ASP.NET Core, EF Core on PostgreSQL, blob storing), AbpCluster, Cronos |
 | `AbpPlugin.Web` | Plugins' web parts: `AbpPluginWebModule`, `MapPluginWeb` (the files and the remotes list), `IPluginWebSections`, `PluginWebRemotes`, `MapPluginPartFiles` | `AbpPlugin`, ASP.NET Core |
-| `@tekthar/abp-plugin-web` (npm) | The page's side: `createPluginLoader` (registers the remotes, loads what they expose, shares the application's modules), `fetchPluginRemotes`, and `reactPluginComponents` in `/react` | `@module-federation/runtime`; React for `/react` |
+| `@abpjs/plugin-web` (npm) | The page's side: `createPluginLoader` (registers the remotes, loads what they expose, shares the application's modules), `fetchPluginRemotes`, and `reactPluginComponents` in `/react` | `@module-federation/runtime`; React for `/react` |
 | `AbpPlugin.Sdk` | What a plugin references: `PluginEntry`, `IPluginServices`, `PluginDbContext`, endpoints, events, jobs, settings, files, secrets, health checks, seeders, contributions | ASP.NET Core, EF Core (relational) |
 | `AbpPlugin.Packaging` | The package format: `PluginPackageFormat`, `PluginSignature`, `PluginSignatureFile`, `PluginPackageManifest`, `SemanticVersion`, `PluginException`, and the signing tool's commands (`PluginSigningTool`). A marketplace or a build tool can use it | Plain .NET |
 | `AbpPlugin.Build` | MSBuild targets that pack a plugin after its build, and sign it when given a key | Nothing (targets only) |

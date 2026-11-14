@@ -2,8 +2,8 @@ import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import { Component, StrictMode, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createPluginLoader, fetchPluginRemotes, type PluginWebEntry } from '@tekthar/abp-plugin-web';
-import { reactPluginComponents } from '@tekthar/abp-plugin-web/react';
+import { createPluginLoader, fetchPluginRemotes, type PluginWebEntry } from '@abpjs/plugin-web';
+import { reactPluginComponents } from '@abpjs/plugin-web/react';
 
 // The sample host's page: each enabled plugin's ./Page, from the remotes AbpPlugin.Web lists. The page shares its React
 // with the plugins, so each renders with this one.

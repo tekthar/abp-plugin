@@ -2,13 +2,13 @@
   "name": "abp-plugin-sample-host-web",
   "private": true,
   "version": "0.0.0",
-  "description": "The sample host's page: the enabled plugins' pages, loaded with @tekthar/abp-plugin-web. Built into ../wwwroot.",
+  "description": "The sample host's page: the enabled plugins' pages, loaded with @abpjs/plugin-web. Built into ../wwwroot.",
   "type": "module",
   "scripts": {
     "build": "vite build"
   },
   "dependencies": {
-    "@tekthar/abp-plugin-web": "file:../../../packages/plugin-web",
+    "@abpjs/plugin-web": "file:../../../packages/plugin-web",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },

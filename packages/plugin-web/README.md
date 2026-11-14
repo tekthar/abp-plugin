@@ -1,18 +1,18 @@
-# @tekthar/abp-plugin-web
+# @abpjs/plugin-web
 
 Plugins' web parts in the page, for an ABP application that hosts plugins with
 [AbpPlugin](https://github.com/tekthar/abp-plugin). The server's `AbpPlugin.Web` serves each enabled plugin's browser
 bundle (a [Module Federation](https://module-federation.io) remote) and lists the remotes; this package registers them
 and loads what they expose, sharing the application's own modules with the plugins. It has no framework of its own;
-`@tekthar/abp-plugin-web/react` adds React's lazy components.
+`@abpjs/plugin-web/react` adds React's lazy components.
 
 > **Preview.** 0.x versions may change their API in any minor version. Pin an exact version.
 
 ```ts
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
-import { createPluginLoader, fetchPluginRemotes } from '@tekthar/abp-plugin-web';
-import { reactPluginComponents } from '@tekthar/abp-plugin-web/react';
+import { createPluginLoader, fetchPluginRemotes } from '@abpjs/plugin-web';
+import { reactPluginComponents } from '@abpjs/plugin-web/react';
 
 // The modules the page shares: plugins declare them with `import: false` and render with the page's one copy.
 const loader = createPluginLoader({

@@ -6,6 +6,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The page's source and its node_modules stay out of the build; it's built into wwwroot (web/package.json). -->
+    <Content Remove="web\**" />
+    <None Remove="web\**" />
+    <Compile Remove="web\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\AbpPlugin\AbpPlugin.csproj" />
     <ProjectReference Include="..\..\src\AbpPlugin.Web\AbpPlugin.Web.csproj" />
     <PackageReference Include="Volo.Abp.Autofac" Version="$(AbpVersion)" />
