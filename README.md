@@ -116,7 +116,7 @@ public sealed class Hello(PluginContext context, IPluginJson json) : IPluginEndp
 Then install its zip with `PluginManager.InstallAsync(path)`, from an admin page of your own.
 
 See [hosting](docs/hosting.md), [building plugins](docs/building-plugins.md), [the package format](docs/package-format.md),
-[plugins' web parts](docs/web.md) and [moving an application onto AbpPlugin](docs/moving-onto-abp-plugin.md). Why it is shaped this way is in
+[plugins' web parts](docs/web.md), [where ABP's layers are](docs/abp-layers.md) and [moving an application onto AbpPlugin](docs/moving-onto-abp-plugin.md). Why it is shaped this way is in
 [ADR 0001](docs/adr/0001-abp-plugin-as-a-package.md). `samples/AbpPlugin.SampleHost` is a complete host, and
 `samples/AbpPlugin.Sample` a plugin that uses every part of the SDK.
 
