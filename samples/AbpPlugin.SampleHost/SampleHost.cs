@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using AbpPlugin.Hosting;
+using AbpPlugin.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -18,9 +19,10 @@ namespace AbpPlugin.SampleHost;
 /// <summary>
 /// The plugin host's module and ABP's: all a host needs. The sample's context holds the host's tables; packages and
 /// plugins' files are on disk under its data folder (<c>Sample:DataRoot</c>); a request names its account in a header,
-/// standing in for an application's own sign-in; the host's defaults do the rest.
+/// standing in for an application's own sign-in; the host's defaults do the rest. Plugins' web parts are served at
+/// /plugins-web/, and their remotes listed for a signed-in person (AbpPlugin.Web).
 /// </summary>
-[DependsOn(typeof(AbpAutofacModule), typeof(AbpBlobStoringFileSystemModule), typeof(AbpPluginModule))]
+[DependsOn(typeof(AbpAutofacModule), typeof(AbpBlobStoringFileSystemModule), typeof(AbpPluginModule), typeof(AbpPluginWebModule))]
 public class SampleHostModule : AbpModule
 {
     public override void ConfigureServices(ServiceConfigurationContext context)
@@ -33,6 +35,7 @@ public class SampleHostModule : AbpModule
         Configure<PluginHostOptions>(options => options.PluginsRoot = Path.Combine(data, "plugins"));
         context.Services.AddAuthentication(SampleAccount.Scheme).AddScheme<AuthenticationSchemeOptions, SampleAccount>(SampleAccount.Scheme, null);
         context.Services.AddAuthorization();
+        context.Services.AddSingleton<IPluginWebSections, SampleWebSections>();
     }
 
     public override void OnApplicationInitialization(ApplicationInitializationContext context)
@@ -44,6 +47,7 @@ public class SampleHostModule : AbpModule
         app.UseEndpoints(endpoints =>
         {
             endpoints.MapPluginEndpoints();
+            endpoints.MapPluginWeb().RequireAuthorization();
             endpoints.MapSampleAdmin();
         });
     }

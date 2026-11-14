@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\AbpPlugin\AbpPlugin.csproj" />
+    <ProjectReference Include="..\..\src\AbpPlugin.Web\AbpPlugin.Web.csproj" />
     <PackageReference Include="Volo.Abp.Autofac" Version="$(AbpVersion)" />
     <PackageReference Include="Volo.Abp.BlobStoring.FileSystem" Version="$(AbpVersion)" />
     <!-- For its migrations (dotnet ef migrations add), as a host has for its own. -->

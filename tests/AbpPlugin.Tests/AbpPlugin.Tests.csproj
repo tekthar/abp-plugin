@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\AbpPlugin\AbpPlugin.csproj" />
+    <ProjectReference Include="..\..\src\AbpPlugin.Web\AbpPlugin.Web.csproj" />
   </ItemGroup>
 
 </Project>

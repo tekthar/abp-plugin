@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Plugins' web parts for an AbpPlugin host: serves each enabled plugin's browser bundle from the version installed, and lists their Module Federation remotes for the page, with what the application adds to each.</Description>
+    <RootNamespace>AbpPlugin.Web</RootNamespace>
+    <PackageTags>$(PackageTags);module-federation;micro-frontends</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="..\AbpPlugin\AbpPlugin.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AbpPlugin.Tests" />
+  </ItemGroup>
+
+</Project>

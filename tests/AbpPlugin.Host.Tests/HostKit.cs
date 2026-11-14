@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using AbpPlugin.Packaging;
 using AbpPlugin.SampleHost;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -25,6 +26,9 @@ public sealed class SamplePackages : IAsyncLifetime
 {
     public const string Key = "acme.abp-sample";
 
+    /// <summary>Its web part's remote name.</summary>
+    public const string WebRemote = "acme_abp_sample";
+
     private readonly string _work = Directory.CreateTempSubdirectory("abp-plugin-packages-").FullName;
 
     public string PublicKey { get; private set; } = "";
@@ -46,6 +50,8 @@ public sealed class SamplePackages : IAsyncLifetime
         PublicKey = publicPem;
         string v010 = await BuildAsync("0.1.0");
         string v020 = await BuildAsync("0.2.0");
+        AddWebPart(v010, "0.1.0");
+        AddWebPart(v020, "0.2.0");
 
         ZipFile.CreateFromDirectory(v010, Unsigned);
         string stranger = Copy(v010, "stranger");
@@ -89,6 +95,24 @@ public sealed class SamplePackages : IAsyncLifetime
         Assert.True(build.ExitCode == 0, $"The sample plugin didn't build at {version}:\n{await output}\n{await errors}");
         Assert.True(File.Exists(Path.Combine(package, PluginPackageFormat.Current.Manifest)), $"No manifest in {package}");
         return package.TrimEnd(Path.DirectorySeparatorChar);
+    }
+
+    /// <summary>
+    /// A web part in the built package, as a plugin's web build leaves it in <c>web/</c>: an entry naming its version, a
+    /// chunk, the federation's manifest, and the manifest's <c>web</c> section. A stand-in until the sample has a web part
+    /// of its own (AbpPlugin.Web's browser package).
+    /// </summary>
+    private static void AddWebPart(string package, string version)
+    {
+        string web = Path.Combine(package, "web");
+        Directory.CreateDirectory(Path.Combine(web, "assets"));
+        File.WriteAllText(Path.Combine(web, "remoteEntry.js"), $"export const version = \"{version}\";\n");
+        File.WriteAllText(Path.Combine(web, "assets", "chunk.js"), "export default 1;\n");
+        File.WriteAllText(Path.Combine(web, "mf-manifest.json"), "{}\n");
+        string manifest = Path.Combine(package, PluginPackageFormat.Current.Manifest);
+        JsonObject json = JsonNode.Parse(File.ReadAllText(manifest))!.AsObject();
+        json["web"] = new JsonObject { ["remoteName"] = WebRemote, ["entry"] = "web/remoteEntry.js" };
+        File.WriteAllText(manifest, json.ToJsonString());
     }
 
     private string Copy(string folder, string name)

@@ -45,6 +45,9 @@ removed while the application keeps running. A plugin isn't an ABP module: it sa
 - **Several servers.** Each server brings its plugins in line with the plugins table every 15 seconds. Packages come
   from blob storage, checked against the hash recorded at install. One server at a time migrates a plugin, and each
   occurrence of a recurring job runs once for the site.
+- **Screens of their own.** A plugin's browser bundle, a Module Federation remote in its package's `web/`, is served
+  from the version installed, and the page gets the enabled plugins' remotes with what the application adds to each
+  (`AbpPlugin.Web`, [docs/web.md](docs/web.md)).
 - **Seams with defaults for one server:** who the caller is, the public endpoints' limits, the application's own checks
   on a plugin coming in, notices that plugins changed, and recurring jobs' slots. An application with several servers,
   or rules of its own, registers its own.
@@ -54,6 +57,7 @@ removed while the application keeps running. A plugin isn't an ABP module: it sa
 | Package | Holds | Depends on |
 |---|---|---|
 | `AbpPlugin` | The host: `AbpPluginModule`, `PluginManager`, `PluginTrust`, `PluginRuntime`, the endpoint dispatcher, the seams and their defaults, the table mapping | ABP 10.6 (ASP.NET Core, EF Core on PostgreSQL, blob storing), AbpCluster, Cronos |
+| `AbpPlugin.Web` | Plugins' web parts: `AbpPluginWebModule`, `MapPluginWeb` (the files and the remotes list), `IPluginWebSections`, `PluginWebRemotes`, `MapPluginPartFiles` | `AbpPlugin`, ASP.NET Core |
 | `AbpPlugin.Sdk` | What a plugin references: `PluginEntry`, `IPluginServices`, `PluginDbContext`, endpoints, events, jobs, settings, files, secrets, health checks, seeders, contributions | ASP.NET Core, EF Core (relational) |
 | `AbpPlugin.Packaging` | The package format: `PluginPackageFormat`, `PluginSignature`, `PluginSignatureFile`, `PluginPackageManifest`, `SemanticVersion`, `PluginException`, and the signing tool's commands (`PluginSigningTool`). A marketplace or a build tool can use it | Plain .NET |
 | `AbpPlugin.Build` | MSBuild targets that pack a plugin after its build, and sign it when given a key | Nothing (targets only) |
@@ -111,7 +115,7 @@ public sealed class Hello(PluginContext context, IPluginJson json) : IPluginEndp
 Then install its zip with `PluginManager.InstallAsync(path)`, from an admin page of your own.
 
 See [hosting](docs/hosting.md), [building plugins](docs/building-plugins.md), [the package format](docs/package-format.md),
-and [moving an application onto AbpPlugin](docs/moving-onto-abp-plugin.md). Why it is shaped this way is in
+[plugins' web parts](docs/web.md) and [moving an application onto AbpPlugin](docs/moving-onto-abp-plugin.md). Why it is shaped this way is in
 [ADR 0001](docs/adr/0001-abp-plugin-as-a-package.md). `samples/AbpPlugin.SampleHost` is a complete host, and
 `samples/AbpPlugin.Sample` a plugin that uses every part of the SDK.
 

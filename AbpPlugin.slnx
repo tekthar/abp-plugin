@@ -5,6 +5,7 @@
   <Folder Name="/src/">
     <Project Path="src/AbpPlugin/AbpPlugin.csproj" />
     <Project Path="src/AbpPlugin.Sdk/AbpPlugin.Sdk.csproj" />
+    <Project Path="src/AbpPlugin.Web/AbpPlugin.Web.csproj" />
     <Project Path="src/AbpPlugin.Packaging/AbpPlugin.Packaging.csproj" />
     <Project Path="src/AbpPlugin.Build/AbpPlugin.Build.csproj" />
     <Project Path="src/AbpPlugin.Sign/AbpPlugin.Sign.csproj" />

@@ -6,6 +6,16 @@ All notable changes to AbpPlugin are written here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `AbpPlugin.Web`, plugins' web parts ([docs/web.md](docs/web.md)): `AbpPluginWebModule`, and `MapPluginWeb`, which
+  serves each enabled plugin's browser bundle from the folder its version is installed in
+  (`/plugins-web/{key}/{folder}/{**file}`, every installed version's, nothing outside `web/`, `Cache-Control:
+  no-cache`) and lists the enabled plugins' Module Federation remotes (`/api/plugins-web/remotes`). An application adds
+  its own sections to each plugin in the list, or leaves one out, with `IPluginWebSections`; `PluginWebRemotes` gives the
+  remotes to an application that builds its own list; `MapPluginPartFiles` serves another folder of the plugins the
+  same way; `PluginWebOptions` sets the prefix, the folder and the cache header.
+
 ## [0.1.1] - 2026-11-14
 
 ### Added
