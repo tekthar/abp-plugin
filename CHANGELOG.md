@@ -6,6 +6,11 @@ All notable changes to AbpPlugin are written here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-14
+
+Plugins' screens of their own: a server package that serves their browser bundles and lists them, and an npm package
+for the page. `AbpPlugin`, `AbpPlugin.Sdk`, `AbpPlugin.Packaging`, `AbpPlugin.Build` and `AbpPlugin.Sign` don't change.
+
 ### Added
 
 - `AbpPlugin.Web`, plugins' web parts ([docs/web.md](docs/web.md)): `AbpPluginWebModule`, and `MapPluginWeb`, which
