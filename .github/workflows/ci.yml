@@ -3,7 +3,9 @@
 # sample host, pack, and no old product name in the packages either; the browser package's and the samples' web parts
 # are type-checked, tested and built. A v<version> tag runs the checks, then pushes the
 # packages (AbpPlugin, AbpPlugin.Web, AbpPlugin.Sdk, AbpPlugin.Packaging, AbpPlugin.Build, AbpPlugin.Sign) to nuget.org through Trusted
-# Publishing (a one-hour key nuget.org gives this workflow, no stored secret) and makes a GitHub release.
+# Publishing (a one-hour key nuget.org gives this workflow, no stored secret), publishes @abpjs/plugin-web to npm the same
+# way (npm's Trusted Publisher names this repository, ci.yml and the release environment; npm adds provenance) and makes
+# a GitHub release.
 
 name: CI
 
@@ -106,6 +108,23 @@ jobs:
         env:
           NUGET_API_KEY: ${{ steps.nuget.outputs.NUGET_API_KEY }}
         run: dotnet nuget push "artifacts/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+      # Trusted Publishing needs npm 11.5.1 or later; Node 22 brings npm 10.
+      - run: npm install -g "npm@^11.5.1"
+      - name: Publish @abpjs/plugin-web to npm
+        working-directory: packages/plugin-web
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          npm ci
+          # A rerun after a failure later in the job: npm refuses a version it has, so one already there is skipped.
+          if [[ "$(npm view "@abpjs/plugin-web@$version" version 2>/dev/null)" == "$version" ]]; then
+            echo "@abpjs/plugin-web $version is already on npm."
+          else
+            npm publish --access public $([[ "$version" == *-* ]] && echo --tag next)
+          fi
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

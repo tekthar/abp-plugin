@@ -6,6 +6,16 @@ All notable changes to AbpPlugin are written here. The format follows
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-14
+
+No change to the code: `@abpjs/plugin-web` is published from the release workflow now.
+
+### Changed
+
+- `@abpjs/plugin-web` goes to npm from the v-tag release, through npm's Trusted Publishing, with provenance, beside the
+  NuGet packages. `scripts/check-release.sh` checks that its version is the packages' version.
+- [docs/abp-layers.md](docs/abp-layers.md): where ABP's module layers are in AbpPlugin, for ABP developers.
+
 ## [0.2.0] - 2026-11-14
 
 Plugins' screens of their own: a server package that serves their browser bundles and lists them, and an npm package

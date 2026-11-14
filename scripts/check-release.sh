@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Checks that the version is ready to release: CHANGELOG.md has a "## [<version>]" entry; given --tag v<version>, that
 # the tag names the version in Directory.Build.props; given --unpublished, that nuget.org doesn't have AbpPlugin at
-# that version yet (nuget.org refuses a duplicate push, but only after the other packages went). Exits 1 with the reason
-# otherwise.
+# that version yet (nuget.org refuses a duplicate push, but only after the other packages went). Always: that the browser
+# package (packages/plugin-web/package.json) has the same version. Exits 1 with the reason otherwise.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -23,6 +23,11 @@ done
 
 if [[ -n "$tag" && "$tag" != "v$version" ]]; then
   problems+=("the tag is \"$tag\" but Directory.Build.props says $version: tag v$version")
+fi
+
+web=$(sed -n 's/^  "version": "\([^"]*\)".*/\1/p' packages/plugin-web/package.json | head -1)
+if [[ "$web" != "$version" ]]; then
+  problems+=("packages/plugin-web/package.json says $web: give @abpjs/plugin-web the same version")
 fi
 
 if ! grep -qF "## [$version]" CHANGELOG.md; then
