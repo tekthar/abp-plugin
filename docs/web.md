@@ -71,5 +71,39 @@ context.Services.AddSingleton<IPluginWebSections, MyWebSections>();
 ## In the page
 
 The page registers the listed remotes with Module Federation's runtime and loads what each exposes, sharing its own
-React and design system with them. AbpPlugin.Web's browser package does that with no framework of its own, and a React
-adapter beside it.
+modules (React, its design system) with them. The browser package
+[`@tekthar/abp-plugin-web`](../packages/plugin-web/README.md) does that with no framework of its own, and a React
+adapter beside it:
+
+```ts
+const loader = createPluginLoader({ name: 'my_app', shared: { react: { version: React.version, lib: () => React,
+  shareConfig: { singleton: true, requiredVersion: '^19.0.0' } } /* react-dom, the design system… */ } });
+const components = reactPluginComponents(loader);
+
+const plugins = await fetchPluginRemotes();     // the list above, with the page's sign-in
+loader.register(plugins.map((p) => p.remote));  // again after an upgrade: a changed entry is registered anew
+const Page = components.lazy(plugins[0].remote.name, 'Page');
+```
+
+What a plugin's remote exposes, and where the page shows it, is the application's convention: its own sections say.
+
+## A plugin's web part
+
+A Vite project in the plugin's `web/` folder, built with `@module-federation/vite` into `web/dist`, which
+`AbpPlugin.Build` packs (or builds first, with `AbpPluginBuildWeb=true`):
+
+- `base: './'`: the bundle is served under `/plugins-web/{key}/{folder}/`, so every address in it is relative;
+- `name` and `filename: 'remoteEntry.js'`, as the manifest's `web` section names them;
+- the modules the page shares as `{ singleton: true, requiredVersion, import: false }`: the plugin ships no copy of
+  them and renders with the page's one React.
+
+`samples/AbpPlugin.Sample/web` exposes the sample's page as `./Page`. To see it in the sample host, build the browser
+package and the two web parts, then run the host and install the sample's package:
+
+```bash
+(cd packages/plugin-web && npm ci && npm run build)
+(cd samples/AbpPlugin.Sample/web && npm ci && npm run build)
+(cd samples/AbpPlugin.SampleHost/web && npm ci && npm run build)   # the host's page, into its wwwroot
+```
+
+The host's page at `/` lists the enabled plugins' pages; `/sample/sign-in` signs the page in as the sample's admin.

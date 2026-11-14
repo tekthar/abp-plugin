@@ -41,6 +41,9 @@ public class SampleHostModule : AbpModule
     public override void OnApplicationInitialization(ApplicationInitializationContext context)
     {
         IApplicationBuilder app = context.GetApplicationBuilder();
+        // The page (web/, built into wwwroot): the enabled plugins' pages, loaded in the browser.
+        app.UseDefaultFiles();
+        app.UseStaticFiles();
         app.UseRouting();
         app.UseAuthentication();
         app.UseAuthorization();
@@ -49,6 +52,11 @@ public class SampleHostModule : AbpModule
             endpoints.MapPluginEndpoints();
             endpoints.MapPluginWeb().RequireAuthorization();
             endpoints.MapSampleAdmin();
+            endpoints.MapGet("/sample/sign-in", (HttpContext http) =>
+            {
+                http.Response.Cookies.Append(SampleAccount.Cookie, SampleAccount.Admin.ToString(), new CookieOptions { HttpOnly = true, SameSite = SameSiteMode.Strict });
+                return Results.Redirect("/");
+            });
         });
     }
 }
@@ -87,8 +95,8 @@ public class SampleDbContextFactory : Microsoft.EntityFrameworkCore.Design.IDesi
 }
 
 /// <summary>
-/// The sample's sign-in: a request names its account in <c>X-Sample-Account</c> (a Guid). It stands in for the
-/// application's own sign-in, so a plugin's endpoints, which need a signed-in caller, have one; never use it in an
+/// The sample's sign-in: a request names its account in <c>X-Sample-Account</c> (a Guid), or the page's cookie does
+/// (<c>/sample/sign-in</c> sets the admin's). It stands in for the application's own sign-in, so a plugin's endpoints, which need a signed-in caller, have one; never use it in an
 /// application people reach.
 /// </summary>
 public sealed class SampleAccount(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
@@ -96,10 +104,15 @@ public sealed class SampleAccount(IOptionsMonitor<AuthenticationSchemeOptions> o
 {
     public const string Scheme = "SampleAccount";
     public const string Header = "X-Sample-Account";
+    public const string Cookie = "sample-account";
+
+    /// <summary>The account /sample/sign-in signs the page in as.</summary>
+    public static readonly Guid Admin = Guid.Parse("00000000-0000-0000-0000-0000000000a1");
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (!Request.Headers.TryGetValue(Header, out var value) || !Guid.TryParse(value, out Guid account))
+        string? value = Request.Headers.TryGetValue(Header, out var header) ? header.ToString() : Request.Cookies[Cookie];
+        if (!Guid.TryParse(value, out Guid account))
         {
             return Task.FromResult(AuthenticateResult.NoResult());
         }

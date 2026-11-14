@@ -7,6 +7,10 @@
   "vendor": {
     "name": "Acme"
   },
+  "web": {
+    "remoteName": "acme_abp_sample",
+    "entry": "web/remoteEntry.js"
+  },
   "server": {
     "assembly": "AbpPlugin.Sample.dll",
     "entry": "AbpPlugin.Sample.SamplePlugin"

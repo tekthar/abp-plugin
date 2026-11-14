@@ -113,6 +113,7 @@ public sealed class Ping(SampleDb db, IPluginSettings settings, IPluginFiles fil
         return json.Result(new
         {
             context.Key,
+            context.Version,
             context.Schema,
             Visits = await db.Visits.CountAsync(cancellationToken),
             Seeded = await db.Visits.AnyAsync(v => v.Id == SampleSeeder.First, cancellationToken),

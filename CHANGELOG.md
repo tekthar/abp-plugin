@@ -15,6 +15,12 @@ All notable changes to AbpPlugin are written here. The format follows
   its own sections to each plugin in the list, or leaves one out, with `IPluginWebSections`; `PluginWebRemotes` gives the
   remotes to an application that builds its own list; `MapPluginPartFiles` serves another folder of the plugins the
   same way; `PluginWebOptions` sets the prefix, the folder and the cache header.
+- `@tekthar/abp-plugin-web`, the browser package beside it (npm): `createPluginLoader` registers the listed remotes
+  with Module Federation's runtime and loads what they expose, sharing the application's own modules;
+  `fetchPluginRemotes` reads the list; `/react` gives each exposed component as a React lazy component, dropped when
+  its remote changes.
+- The sample plugin has a web part (`samples/AbpPlugin.Sample/web`, its page as `./Page`), and the sample host a page
+  that shows the enabled plugins' pages; `/sample/sign-in` signs the page in. The sample's `ping` gives its version.
 
 ## [0.1.1] - 2026-11-14
 

@@ -1,0 +1,20 @@
+{
+  "name": "abp-plugin-sample-web",
+  "private": true,
+  "version": "0.0.0",
+  "description": "The sample plugin's web part: a Module Federation remote that exposes its page, built into dist/ for the package's web/.",
+  "type": "module",
+  "scripts": {
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "@module-federation/vite": "1.23.2",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.1.2",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "typescript": "5.9.3",
+    "vite": "8.3.2"
+  }
+}

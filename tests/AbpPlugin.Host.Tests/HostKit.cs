@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using AbpPlugin.Packaging;
 using AbpPlugin.SampleHost;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -26,7 +25,7 @@ public sealed class SamplePackages : IAsyncLifetime
 {
     public const string Key = "acme.abp-sample";
 
-    /// <summary>Its web part's remote name.</summary>
+    /// <summary>Its web part's remote name (plugin.template.json's <c>web</c>).</summary>
     public const string WebRemote = "acme_abp_sample";
 
     private readonly string _work = Directory.CreateTempSubdirectory("abp-plugin-packages-").FullName;
@@ -98,9 +97,9 @@ public sealed class SamplePackages : IAsyncLifetime
     }
 
     /// <summary>
-    /// A web part in the built package, as a plugin's web build leaves it in <c>web/</c>: an entry naming its version, a
-    /// chunk, the federation's manifest, and the manifest's <c>web</c> section. A stand-in until the sample has a web part
-    /// of its own (AbpPlugin.Web's browser package).
+    /// The web part the tests read, in the built package's <c>web/</c>: an entry naming its version, a chunk and the
+    /// federation's manifest. The sample's own (samples/AbpPlugin.Sample/web) is built only where Node is, and the tests
+    /// check the server, not the bundle; its manifest names it already.
     /// </summary>
     private static void AddWebPart(string package, string version)
     {
@@ -109,10 +108,6 @@ public sealed class SamplePackages : IAsyncLifetime
         File.WriteAllText(Path.Combine(web, "remoteEntry.js"), $"export const version = \"{version}\";\n");
         File.WriteAllText(Path.Combine(web, "assets", "chunk.js"), "export default 1;\n");
         File.WriteAllText(Path.Combine(web, "mf-manifest.json"), "{}\n");
-        string manifest = Path.Combine(package, PluginPackageFormat.Current.Manifest);
-        JsonObject json = JsonNode.Parse(File.ReadAllText(manifest))!.AsObject();
-        json["web"] = new JsonObject { ["remoteName"] = WebRemote, ["entry"] = "web/remoteEntry.js" };
-        File.WriteAllText(manifest, json.ToJsonString());
     }
 
     private string Copy(string folder, string name)

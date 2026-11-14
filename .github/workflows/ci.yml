@@ -1,6 +1,7 @@
 # Pushes to main and pull requests run the checks: the version has its changelog entry (scripts/check-release.sh), no
 # old product name (scripts/check-names.sh), build, the unit tests, the integration tests against PostgreSQL through the
-# sample host, pack, and no old product name in the packages either. A v<version> tag runs the checks, then pushes the
+# sample host, pack, and no old product name in the packages either; the browser package's and the samples' web parts
+# are type-checked, tested and built. A v<version> tag runs the checks, then pushes the
 # packages (AbpPlugin, AbpPlugin.Web, AbpPlugin.Sdk, AbpPlugin.Packaging, AbpPlugin.Build, AbpPlugin.Sign) to nuget.org through Trusted
 # Publishing (a one-hour key nuget.org gives this workflow, no stored secret) and makes a GitHub release.
 
@@ -52,8 +53,26 @@ jobs:
           name: packages
           path: artifacts/
 
+  web:
+    # The browser package (packages/plugin-web) and the samples' web parts: types, tests, builds.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - name: The browser package
+        working-directory: packages/plugin-web
+        run: npm ci && npm run typecheck && npm test && npm pack --dry-run
+      - name: The sample plugin's web part
+        working-directory: samples/AbpPlugin.Sample/web
+        run: npm ci && npx tsc --noEmit && npm run build
+      - name: The sample host's page
+        working-directory: samples/AbpPlugin.SampleHost/web
+        run: npm ci && npx tsc --noEmit && npm run build
+
   publish:
-    needs: check
+    needs: [check, web]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     # The nuget.org Trusted Publishing policy names this repository, ci.yml and this environment.

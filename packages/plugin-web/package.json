@@ -1,0 +1,66 @@
+{
+  "name": "@tekthar/abp-plugin-web",
+  "version": "0.2.0",
+  "description": "Plugins' web parts in the page for an AbpPlugin host: registers the Module Federation remotes the server lists and loads what they expose, sharing the application's own modules. No framework of its own; a React adapter beside it.",
+  "license": "Apache-2.0",
+  "author": "AbpPlugin contributors",
+  "homepage": "https://github.com/tekthar/abp-plugin/blob/main/docs/web.md",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tekthar/abp-plugin.git",
+    "directory": "packages/plugin-web"
+  },
+  "keywords": [
+    "module-federation",
+    "micro-frontends",
+    "plugins",
+    "abp"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "pretest": "tsup",
+    "test": "node --test \"tests/*.test.mjs\""
+  },
+  "dependencies": {
+    "@module-federation/runtime": "^2.9.2"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/react": "19.2.7",
+    "react": "19.3.0",
+    "tsup": "8.5.1",
+    "typescript": "5.9.3"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

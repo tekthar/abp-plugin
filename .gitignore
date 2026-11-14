@@ -8,3 +8,9 @@ TestResults/
 *.log
 
 App_Data/
+
+# The browser package and the samples' web parts: dependencies and builds.
+node_modules/
+packages/plugin-web/dist/
+samples/AbpPlugin.Sample/web/dist/
+samples/AbpPlugin.SampleHost/wwwroot/
