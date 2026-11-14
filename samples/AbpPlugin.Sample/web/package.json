@@ -8,7 +8,7 @@
     "build": "vite build"
   },
   "devDependencies": {
-    "@module-federation/vite": "1.23.2",
+    "@module-federation/vite": "1.24.0",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.1.2",
