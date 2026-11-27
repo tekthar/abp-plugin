@@ -100,6 +100,19 @@ public sealed class PluginHostProfile
     public IReadOnlyList<string> ReleaseKeys { get; init; } = [];
 
     /// <summary>
+    /// The roots of a countersigning authority (a marketplace) built into the application, public keys as PEM or base64,
+    /// trusted beside the ones the server's operator lists in <see cref="CountersignerRootsSetting"/>. A package the
+    /// authority countersigned goes in as its certified publisher's, without the publisher's key added by hand.
+    /// </summary>
+    public IReadOnlyList<string> CountersignerRoots { get; init; } = [];
+
+    /// <summary>The setting a server's operator lists the authority's roots in.</summary>
+    public string CountersignerRootsSetting { get; init; } = "PluginHost:CountersignerRoots";
+
+    /// <summary>What the countersigning authority is called where a message names it.</summary>
+    public string CountersignerName { get; init; } = "the marketplace";
+
+    /// <summary>
     /// Whether a plugin key is under one of the application's own publishers, whose packages only a release key signs:
     /// anyone can name a plugin so, so a publisher's key or the admins' leave doesn't do.
     /// </summary>

@@ -48,6 +48,19 @@ public sealed record PluginPackageFormat
     /// </summary>
     public string SignedPrefix { get; init; } = "abp-plugin-signature/1\n";
 
+    /// <summary>
+    /// A countersigning authority's countersignature, beside the publisher's (<see cref="PluginCountersignature"/>): a
+    /// marketplace that checked the publisher's signature against the key it certified, and signs the same digest. The
+    /// digest leaves it out.
+    /// </summary>
+    public string Countersignature { get; init; } = "plugin-countersignature.json";
+
+    /// <summary>What an authority's certificate for a publisher's key is made over, before its fields.</summary>
+    public string CertificatePrefix { get; init; } = "abp-plugin-key-certificate/1\n";
+
+    /// <summary>What a countersignature is made over, before its fields.</summary>
+    public string CountersignaturePrefix { get; init; } = "abp-plugin-countersignature/1\n";
+
     /// <summary>The file extensions a package comes in, zipped.</summary>
     public IReadOnlyList<string> PackageExtensions { get; init; } = [".zip"];
 

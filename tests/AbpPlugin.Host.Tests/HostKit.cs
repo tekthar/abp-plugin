@@ -43,6 +43,21 @@ public sealed class SamplePackages : IAsyncLifetime
     /// <summary>0.1.0 signed by a key no site trusts.</summary>
     public string Stranger => Path.Combine(_work, "acme.abp-sample-stranger.zip");
 
+    /// <summary>The countersigning authority's root, which a host given it trusts (PEM).</summary>
+    public string RootKey { get; private set; } = "";
+
+    /// <summary>0.1.0 as Acme signed it, countersigned by the authority with its certificate for Acme's key.</summary>
+    public string Countersigned010 => Path.Combine(_work, "acme.abp-sample-0.1.0-countersigned.zip");
+
+    /// <summary>0.2.0 signed by a new key of Acme's, which the authority certified for Acme too, countersigned.</summary>
+    public string NewKey020 => Path.Combine(_work, "acme.abp-sample-0.2.0-new-key.zip");
+
+    /// <summary>0.2.0 of Acme's plugin, signed by another publisher's certified key and countersigned for it.</summary>
+    public string OtherPublisher020 => Path.Combine(_work, "acme.abp-sample-0.2.0-other-publisher.zip");
+
+    /// <summary>0.2.0 countersigned as 0.1.0: the authority's word about another version.</summary>
+    public string WrongVersion020 => Path.Combine(_work, "acme.abp-sample-0.2.0-wrong-version.zip");
+
     public async Task InitializeAsync()
     {
         (string privatePem, string publicPem, _) = PluginSignature.CreateKey();
@@ -65,6 +80,33 @@ public sealed class SamplePackages : IAsyncLifetime
         string changed = Copy(v010, "changed");
         File.AppendAllText(Path.Combine(changed, PluginPackageFormat.Current.Manifest), " ");
         ZipFile.CreateFromDirectory(changed, Changed);
+
+        // The authority's root certifies publishers' keys and countersigns their packages.
+        (string rootPrivate, string rootPublic, _) = PluginSignature.CreateKey();
+        RootKey = rootPublic;
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        PluginKeyCertificate Certify(string publicPem, string publisher, string name) =>
+            PluginCountersignature.Certify(rootPrivate, publisher, name, PluginSignature.ReadPublicKey(publicPem)!, now.AddDays(-1), now.AddYears(1));
+
+        string countersigned = Copy(v010, "countersigned-010");
+        PluginCountersignature.Countersign(countersigned, rootPrivate, "The marketplace", Key, "0.1.0", Certify(publicPem, "acme", "Acme"));
+        ZipFile.CreateFromDirectory(countersigned, Countersigned010);
+
+        (string newPrivate, string newPublic, _) = PluginSignature.CreateKey();
+        string newKey = Copy(v020, "new-key-020");
+        PluginSignature.Sign(newKey, newPrivate, "Acme");
+        PluginCountersignature.Countersign(newKey, rootPrivate, "The marketplace", Key, "0.2.0", Certify(newPublic, "acme", "Acme"));
+        ZipFile.CreateFromDirectory(newKey, NewKey020);
+
+        (string otherPrivate, string otherPublic, _) = PluginSignature.CreateKey();
+        string other = Copy(v020, "other-publisher-020");
+        PluginSignature.Sign(other, otherPrivate, "Beta");
+        PluginCountersignature.Countersign(other, rootPrivate, "The marketplace", Key, "0.2.0", Certify(otherPublic, "beta", "Beta"));
+        ZipFile.CreateFromDirectory(other, OtherPublisher020);
+
+        string wrongVersion = Copy(v020, "wrong-version-020");
+        PluginCountersignature.Countersign(wrongVersion, rootPrivate, "The marketplace", Key, "0.1.0", Certify(publicPem, "acme", "Acme"));
+        ZipFile.CreateFromDirectory(wrongVersion, WrongVersion020);
     }
 
     public Task DisposeAsync()
@@ -153,13 +195,16 @@ public sealed class SampleHost : IAsyncDisposable
     private readonly WebApplicationFactory<Program> _factory;
     private readonly string _data = Directory.CreateTempSubdirectory("abp-plugin-host-").FullName;
 
-    public SampleHost()
+    /// <param name="countersignerRoot">A countersigning authority's root the host trusts (PEM), or none.</param>
+    public SampleHost(string? countersignerRoot = null)
     {
         Database = "abp_plugin_host_" + Guid.NewGuid().ToString("N")[..12];
         Environment.SetEnvironmentVariable("ConnectionStrings__Default", $"{Server};Database={Database}");
         Environment.SetEnvironmentVariable("Sample__DataRoot", _data);
         // The operator's word that admins may allow unsigned plugins, which the sample's settings leave off.
         Environment.SetEnvironmentVariable("PluginHost__AdminsMayAllowUnsigned", "true");
+        // Every host sets it, so one host's root isn't left for the next.
+        Environment.SetEnvironmentVariable("PluginHost__CountersignerRoots__0", countersignerRoot ?? "");
         _factory = new WebApplicationFactory<Program>();
         Client = _factory.CreateClient();
         Client.DefaultRequestHeaders.Add(SampleAccount.Header, Admin.ToString());

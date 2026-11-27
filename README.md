@@ -35,6 +35,13 @@ removed while the application keeps running. A plugin isn't an ABP module: it sa
   built into the application) and publishers' keys its admins add. A package whose files changed after signing never
   goes in, and an upgrade must come from the plugin's own signer. Unsigned packages go in only where the server's
   operator lets admins allow them, and the admins do.
+- **Countersigned packages.** A countersigning authority, such as a marketplace, certifies publishers' keys and
+  countersigns their packages (`PluginCountersignature`, beside the publisher's signature). A site that trusts the
+  authority's root (`PluginHost:CountersignerRoots`, or the application's own) takes such a package as its certified
+  publisher's (kind `marketplace`) without the publisher's key added by hand. The whole chain is checked: the root's
+  countersignature, its certificate for the key, valid when it countersigned, the publisher's signature over the files
+  as they are, and the app ID and version it names, under the certified publisher's own app IDs. An upgrade then takes
+  any key the authority certified for that publisher, never another publisher's.
 - **What a plugin can do** with `AbpPlugin.Sdk` alone: an EF Core context with migrations, seeders, HTTP endpoints for
   signed-in callers, public endpoints for webhooks (capped and rate limited), local and distributed event handlers,
   cron jobs, implementations of the host's extension points, health checks, settings by key, files in blob storage,

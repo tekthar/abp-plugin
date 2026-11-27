@@ -33,13 +33,20 @@ public class PluginTrustSettings
 public static class PluginSignatureKinds
 {
     public const string Release = "release";
+
+    /// <summary>Countersigned by an authority the site trusts (a marketplace), for the publisher it certified: the signer is that publisher.</summary>
+    public const string Marketplace = "marketplace";
+
     public const string Publisher = "publisher";
     public const string Unknown = "unknown";
     public const string Unsigned = "unsigned";
 }
 
-/// <summary>A package's signature, checked: its kind, who signed it (as the key's owner is known here), and the key's id.</summary>
-public sealed record PluginSignatureCheck(string Kind, string? Signer = null, string? KeyId = null);
+/// <summary>
+/// A package's signature, checked: its kind, who signed it (as the key's owner is known here; for a countersigned one, the
+/// certified publisher's slug), the key's id, and for a countersigned one, the app ID and version it was countersigned for.
+/// </summary>
+public sealed record PluginSignatureCheck(string Kind, string? Signer = null, string? KeyId = null, string? Listing = null, string? ListingVersion = null);
 
 /// <summary>
 /// Which plugins a site runs. System plugins, from the image or claiming to be,
@@ -53,6 +60,7 @@ public sealed record PluginSignatureCheck(string Kind, string? Signer = null, st
 public sealed class PluginTrust(IServiceScopeFactory scopes, IConfiguration configuration, ILogger<PluginTrust> logger) : ISingletonDependency
 {
     private IReadOnlyList<(string KeyId, byte[] Key)>? _release;
+    private IReadOnlyList<byte[]>? _roots;
     private HashSet<string>? _builtIn;
 
     public bool AllowUnsignedSystem => configuration.GetValue("PluginHost:AllowUnsignedSystem", false);
@@ -66,6 +74,28 @@ public sealed class PluginTrust(IServiceScopeFactory scopes, IConfiguration conf
     /// <summary>Whether the key is one of the host application's own release keys, rather than one the server's operator added.</summary>
     public bool IsBuiltInReleaseKey(string? keyId) =>
         keyId is not null && (_builtIn ??= [.. PluginHostProfile.Current.ReleaseKeys.Select(PluginSignature.ReadPublicKey).OfType<byte[]>().Select(PluginSignature.KeyId)]).Contains(keyId);
+
+    /// <summary>The countersigning authority's roots this server trusts: the application's built in, and the ones its operator lists.</summary>
+    public IReadOnlyList<byte[]> CountersignerRoots => _roots ??= LoadRoots();
+
+    private List<byte[]> LoadRoots()
+    {
+        string setting = PluginHostProfile.Current.CountersignerRootsSetting;
+        List<byte[]> roots = [];
+        foreach (string text in PluginHostProfile.Current.CountersignerRoots.Concat(configuration.GetSection(setting).Get<string[]>() ?? []).Where(t => !string.IsNullOrWhiteSpace(t)))
+        {
+            if (PluginSignature.ReadPublicKey(text) is { } key)
+            {
+                roots.Add(key);
+            }
+            else
+            {
+                logger.LogError("A root in {Setting} isn't a P-256 public key (PEM or base64): it's ignored", setting);
+            }
+        }
+
+        return roots;
+    }
 
     private List<(string KeyId, byte[] Key)> LoadReleaseKeys()
     {
@@ -110,6 +140,19 @@ public sealed class PluginTrust(IServiceScopeFactory scopes, IConfiguration conf
         if (ReleaseKeys.FirstOrDefault(k => k.KeyId == file.KeyId).Key is { } release)
         {
             return PluginSignature.Verify(file, folder, release) ? new PluginSignatureCheck(PluginSignatureKinds.Release, file.Signer, file.KeyId) : throw Changed();
+        }
+
+        // Countersigned by the authority the site trusts: the publisher it certified, whatever key they signed with. One that
+        // names a trusted root but doesn't hold is refused outright; one by an authority the site doesn't know is as none.
+        PluginCountersignatureCheck counter = PluginCountersignature.Check(folder, file, CountersignerRoots);
+        if (counter.State == PluginCountersignatureState.Broken)
+        {
+            throw new PluginException($"The plugin's countersignature doesn't hold, so it isn't installed. {counter.Problem}");
+        }
+
+        if (counter is { State: PluginCountersignatureState.Holds, File: { } countersigned })
+        {
+            return new PluginSignatureCheck(PluginSignatureKinds.Marketplace, countersigned.Certificate.Publisher, file.KeyId, countersigned.Listing, countersigned.ListingVersion);
         }
 
         if (await FindPublisherAsync(file.KeyId, cancellationToken) is { } publisher)
@@ -172,31 +215,51 @@ public sealed class PluginTrust(IServiceScopeFactory scopes, IConfiguration conf
             return;
         }
 
+        if (check.Kind == PluginSignatureKinds.Marketplace)
+        {
+            string name = PluginHostProfile.Current.CountersignerName;
+            if (!string.Equals(check.Listing, manifest.Key, StringComparison.Ordinal) || !string.Equals(check.ListingVersion, manifest.Version, StringComparison.Ordinal))
+            {
+                throw new PluginException($"'{manifest.Key}' {manifest.Version} carries a countersignature {name} made for {check.Listing} {check.ListingVersion}, so it isn't installed.");
+            }
+
+            if (AppIds.PublisherOf(manifest.Key) != check.Signer)
+            {
+                throw new PluginException($"'{manifest.Key}' is countersigned by {name} for the publisher '{check.Signer}', whose plugins' app IDs start with " +
+                                          $"'{check.Signer}.', so it isn't installed.");
+            }
+        }
+
         if (SignerChange(manifest, check, installed) is { } change)
         {
             throw new PluginException(change);
         }
 
-        if (check.Kind is PluginSignatureKinds.Release or PluginSignatureKinds.Publisher)
+        if (check.Kind is PluginSignatureKinds.Release or PluginSignatureKinds.Marketplace or PluginSignatureKinds.Publisher)
         {
             return;
         }
 
         // Left here: a package no trusted key signed. A plugin with a trusted signer only gets one claiming that same key,
         // no longer trusted: trusting it again lets it in, the admins' leave for unsigned plugins doesn't.
-        if (installed is not { SignatureKind: PluginSignatureKinds.Release or PluginSignatureKinds.Publisher } && await AllowUnsignedAsync(cancellationToken))
+        if (installed is not { SignatureKind: PluginSignatureKinds.Release or PluginSignatureKinds.Marketplace or PluginSignatureKinds.Publisher }
+            && await AllowUnsignedAsync(cancellationToken))
         {
             return;
         }
 
         throw new PluginException(check.Kind == PluginSignatureKinds.Unknown
             ? $"'{manifest.Key}' is signed by {check.Signer} with a key this site doesn't trust (key {check.KeyId}). An admin adds the publisher's key first, " +
-              "from the publisher rather than from the package (Plugins, Publishers)."
+              "from the publisher rather than from the package (Plugins, Publishers)." + Countersigned()
             : AdminsMayAllowUnsigned
-                ? $"'{manifest.Key}' isn't signed. This site installs plugins signed by {PluginHostProfile.Current.ProductName} or by a publisher its admins trust; an admin can allow unsigned ones (Plugins, Publishers)."
+                ? $"'{manifest.Key}' isn't signed. This site installs plugins signed by {PluginHostProfile.Current.ProductName} or by a publisher its admins trust; an admin can allow unsigned ones (Plugins, Publishers)." + Countersigned()
                 : $"'{manifest.Key}' isn't signed. This site installs plugins signed by {PluginHostProfile.Current.ProductName} or by a publisher its admins trust; its server doesn't let admins allow unsigned ones " +
-                  "(PluginHost:AdminsMayAllowUnsigned).");
+                  "(PluginHost:AdminsMayAllowUnsigned)." + Countersigned());
     }
+
+    /// <summary>What a refusal adds where the server trusts a countersigning authority: its countersigned versions go in.</summary>
+    private string Countersigned() =>
+        CountersignerRoots.Count > 0 ? $" A version {PluginHostProfile.Current.CountersignerName} countersigned goes in as its publisher's." : "";
 
     /// <summary>
     /// Why an upgrade to this package would take the plugin from its signer, or null when it doesn't: the installed
@@ -206,18 +269,25 @@ public sealed class PluginTrust(IServiceScopeFactory scopes, IConfiguration conf
     /// </summary>
     public string? SignerChange(PluginManifest manifest, PluginSignatureCheck check, PluginInstallation? installed)
     {
-        if (installed is not { SignatureKind: PluginSignatureKinds.Release or PluginSignatureKinds.Publisher, SignerKeyId: { } before }
+        if (installed is not { SignatureKind: PluginSignatureKinds.Release or PluginSignatureKinds.Marketplace or PluginSignatureKinds.Publisher, SignerKeyId: { } before }
             || check.Kind == PluginSignatureKinds.Release
-            || (check.Kind is PluginSignatureKinds.Publisher or PluginSignatureKinds.Unknown && check.KeyId == before))
+            || (check.Kind is PluginSignatureKinds.Publisher or PluginSignatureKinds.Unknown or PluginSignatureKinds.Marketplace && check.KeyId == before)
+            // The publisher the authority certified keeps its plugin, whatever key it signs this version with.
+            || (installed.SignatureKind == PluginSignatureKinds.Marketplace && check.Kind == PluginSignatureKinds.Marketplace && check.Signer == installed.Signer))
         {
             return null;
         }
 
-        string from = installed.SignatureKind != PluginSignatureKinds.Release ? installed.Signer ?? before
-            : IsBuiltInReleaseKey(before) ? $"{PluginHostProfile.Current.ProductName}'s release key"
-            : $"{installed.Signer ?? before}'s release key";
+        string authority = PluginHostProfile.Current.CountersignerName;
+        string from = installed.SignatureKind switch
+        {
+            PluginSignatureKinds.Marketplace => $"{installed.Signer}, certified by {authority}",
+            PluginSignatureKinds.Publisher => installed.Signer ?? before,
+            _ => IsBuiltInReleaseKey(before) ? $"{PluginHostProfile.Current.ProductName}'s release key" : $"{installed.Signer ?? before}'s release key",
+        };
         string now = check.Kind switch
         {
+            PluginSignatureKinds.Marketplace => $"by {check.Signer}, certified by {authority}",
             PluginSignatureKinds.Publisher => $"by {check.Signer}",
             PluginSignatureKinds.Unknown => $"by {check.Signer} with a key this site doesn't trust (key {check.KeyId})",
             _ => "isn't signed",
@@ -226,9 +296,14 @@ public sealed class PluginTrust(IServiceScopeFactory scopes, IConfiguration conf
                "whether or not unsigned plugins are allowed.";
     }
 
-    /// <summary>Whether a plugin's signer is still trusted here: a release key, or a publisher still on the list.</summary>
+    /// <summary>
+    /// Whether a plugin's signer is still trusted here: a release key, a publisher still on the list, or for a countersigned
+    /// one, an authority the server still trusts.
+    /// </summary>
     public async Task<bool> TrustedAsync(PluginInstallation row, CancellationToken cancellationToken) =>
-        row.SignerKeyId is { } keyId && (ReleaseKeys.Any(k => k.KeyId == keyId) || await FindPublisherAsync(keyId, cancellationToken) is not null);
+        row.SignerKeyId is { } keyId && (ReleaseKeys.Any(k => k.KeyId == keyId)
+            || (row.SignatureKind == PluginSignatureKinds.Marketplace && CountersignerRoots.Count > 0)
+            || await FindPublisherAsync(keyId, cancellationToken) is not null);
 
     /// <summary>Whether unsigned plugins go in now: the admins allow them, where the server lets them.</summary>
     public async Task<bool> AllowUnsignedAsync(CancellationToken cancellationToken)

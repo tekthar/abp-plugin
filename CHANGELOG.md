@@ -6,6 +6,20 @@ All notable changes to AbpPlugin are written here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Countersigned packages.** `AbpPlugin.Packaging`'s `PluginCountersignature` certifies a publisher's key
+  (`PluginKeyCertificate`), countersigns a signed package (`PluginCountersignatureFile`, the format's `Countersignature`
+  file, left out of the digest) and checks the whole chain against a site's roots. The format names the file and the
+  labels its texts start with (`Countersignature`, `CertificatePrefix`, `CountersignaturePrefix`).
+- **A fourth kind of signature, `marketplace`.** `PluginTrust` trusts the roots in `PluginHost:CountersignerRoots` (the
+  setting the profile names, `CountersignerRootsSetting`) and the profile's `CountersignerRoots`. A package whose chain
+  holds goes in as its certified publisher's (the signer is the publisher's slug), when the countersignature names its
+  own app ID and version and the app ID is that publisher's. One whose countersignature names a trusted root but doesn't
+  hold is refused; one by an authority the site doesn't trust is checked as before.
+- **Upgrades keep the certified publisher:** a plugin installed countersigned takes a later version countersigned for
+  the same publisher, whatever key signed it, or one signed by the same key; never another publisher's.
+
 ## [0.2.1] - 2026-11-14
 
 No change to the code: `@abpjs/plugin-web` is published from the release workflow now.

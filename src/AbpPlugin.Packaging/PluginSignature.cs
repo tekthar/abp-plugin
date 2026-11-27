@@ -25,9 +25,13 @@ public static class PluginSignature
     /// <summary>What a signature is made over, before the digest, in the current format (<see cref="PluginPackageFormat.SignedPrefix"/>).</summary>
     public static string SignedPrefix => PluginPackageFormat.Current.SignedPrefix;
 
-    /// <summary>Files the digest leaves out: the signature itself, and the mark a server writes on a package it unpacked (<c>PluginPackages</c>).</summary>
+    /// <summary>
+    /// Files the digest leaves out: the signature itself, a countersignature made after it, and the mark a server writes
+    /// on a package it unpacked (<c>PluginPackages</c>).
+    /// </summary>
     private static string[] NotSigned =>
-        [FileName, PluginPackageFormat.Current.Marker, .. PluginPackageFormat.Current.FormerMarkers, .. PluginPackageFormat.Current.Unsigned];
+        [FileName, PluginPackageFormat.Current.Countersignature, PluginPackageFormat.Current.Marker, .. PluginPackageFormat.Current.FormerMarkers,
+            .. PluginPackageFormat.Current.Unsigned];
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
