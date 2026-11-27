@@ -67,14 +67,26 @@ public static class PluginCountersignature
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
-    /// <summary>What a key certificate's signature covers.</summary>
+    /// <summary>What a key certificate's signature covers: every field, the publisher's name people are shown among them.</summary>
     public static byte[] Signed(PluginKeyCertificate c) => Encoding.UTF8.GetBytes(
-        $"{PluginPackageFormat.Current.CertificatePrefix}{c.Publisher}\n{c.KeyId}\n{c.PublicKey}\n{c.NotBefore.UtcDateTime:O}\n{c.NotAfter.UtcDateTime:O}\n{c.IssuerKeyId}\n");
+        $"{PluginPackageFormat.Current.CertificatePrefix}{c.Publisher}\n{c.PublisherName}\n{c.KeyId}\n{c.PublicKey}\n{c.NotBefore.UtcDateTime:O}\n" +
+        $"{c.NotAfter.UtcDateTime:O}\n{c.IssuerKeyId}\n");
 
-    /// <summary>What a countersignature covers.</summary>
+    /// <summary>What a countersignature covers: every field, the authority's name among them, and its certificate's signature.</summary>
     public static byte[] Signed(PluginCountersignatureFile c) => Encoding.UTF8.GetBytes(
-        $"{PluginPackageFormat.Current.CountersignaturePrefix}{c.Digest}\n{c.Listing}\n{c.ListingVersion}\n{c.PublisherKeyId}\n{c.PublisherSignatureSha256}\n" +
-        $"{c.Certificate.Signature}\n{c.SignedAt.UtcDateTime:O}\n");
+        $"{PluginPackageFormat.Current.CountersignaturePrefix}{c.Signer}\n{c.Digest}\n{c.Listing}\n{c.ListingVersion}\n{c.PublisherKeyId}\n" +
+        $"{c.PublisherSignatureSha256}\n{c.Certificate.Signature}\n{c.SignedAt.UtcDateTime:O}\n");
+
+    /// <summary>
+    /// Whether a field may go in a signed text: the fields are joined by line breaks, so one holding a line break could
+    /// make two different sets of fields the same text.
+    /// </summary>
+    private static bool OneLine(params string?[] fields) => fields.All(f => f is not null && !f.Contains('\n') && !f.Contains('\r'));
+
+    private static bool OneLine(PluginKeyCertificate c) => OneLine(c.Publisher, c.PublisherName, c.KeyId, c.PublicKey, c.IssuerKeyId, c.Signature);
+
+    private static bool OneLine(PluginCountersignatureFile c) =>
+        OneLine(c.Signer, c.Digest, c.Listing, c.ListingVersion, c.PublisherKeyId, c.PublisherSignatureSha256, c.KeyId, c.Signature) && OneLine(c.Certificate);
 
     /// <summary>The SHA-256 of a publisher's signature (its base64 text), as a countersignature binds it.</summary>
     public static string Sha256(string text) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
@@ -83,6 +95,11 @@ public static class PluginCountersignature
     public static PluginKeyCertificate Certify(string authorityPrivatePem, string publisher, string publisherName, byte[] publicKey, DateTimeOffset notBefore,
         DateTimeOffset notAfter)
     {
+        if (!OneLine(publisher, publisherName))
+        {
+            throw new ArgumentException("A publisher's slug and name are one line each.");
+        }
+
         using ECDsa key = ECDsa.Create();
         key.ImportFromPem(authorityPrivatePem);
         PluginKeyCertificate unsigned = new(1, PluginSignature.Algorithm, publisher, publisherName, PluginSignature.KeyId(publicKey), Convert.ToBase64String(publicKey),
@@ -97,6 +114,11 @@ public static class PluginCountersignature
     public static PluginCountersignatureFile Countersign(string folder, string authorityPrivatePem, string authority, string listing, string version,
         PluginKeyCertificate certificate, DateTimeOffset? at = null)
     {
+        if (!OneLine(authority, listing, version) || !OneLine(certificate))
+        {
+            throw new ArgumentException("The authority's name, the app ID, the version and the certificate's fields are one line each.");
+        }
+
         PluginSignatureFile publisher = PluginSignature.Read(folder) ?? throw new InvalidOperationException("The plugin isn't signed by its publisher.");
         if (publisher.KeyId != certificate.KeyId || !PluginSignature.Verify(publisher, folder, Convert.FromBase64String(certificate.PublicKey)))
         {
@@ -124,7 +146,11 @@ public static class PluginCountersignature
         try
         {
             return JsonSerializer.Deserialize<PluginCountersignatureFile>(File.ReadAllText(path), Json) is
-                { KeyId: not null, Digest: not null, Signature: not null, Listing: not null, ListingVersion: not null, Certificate.Signature: not null } file
+                {
+                    KeyId: not null, Signer: not null, Digest: not null, Signature: not null, Listing: not null, ListingVersion: not null,
+                    PublisherKeyId: not null, PublisherSignatureSha256: not null,
+                    Certificate: { Publisher: not null, PublisherName: not null, KeyId: not null, PublicKey: not null, IssuerKeyId: not null, Signature: not null },
+                } file
                 ? file
                 : throw new InvalidDataException($"The plugin's {FileName} can't be read.");
         }
@@ -136,7 +162,7 @@ public static class PluginCountersignature
 
     /// <summary>
     /// Checks a folder's countersignature against the roots a site trusts (SubjectPublicKeyInfo each): the whole chain
-    /// holds when the countersignature is a root's, its certificate for the publisher's key is a root's and was valid when
+    /// holds when the countersignature is a root's, its certificate for the publisher's key is the same root's and was valid when
     /// the countersignature was made, it binds the publisher's signature, and that signature is the certified key's over
     /// the folder's files as they are. The app ID and version it names are the caller's to compare with the manifest.
     /// </summary>
@@ -165,15 +191,16 @@ public static class PluginCountersignature
             return new PluginCountersignatureCheck(PluginCountersignatureState.NotTrusted, $"It's countersigned by {c.Signer} with a key this site doesn't trust (key {c.KeyId}).", c);
         }
 
-        if (c.Version != 1 || c.Algorithm != PluginSignature.Algorithm || !VerifyData(root, Signed(c), c.Signature))
+        if (c.Version != 1 || c.Algorithm != PluginSignature.Algorithm || !OneLine(c) || !VerifyData(root, Signed(c), c.Signature))
         {
             return Broken($"Its countersignature isn't {c.Signer}'s (key {c.KeyId}): it was changed, or made for something else.");
         }
 
         PluginKeyCertificate certificate = c.Certificate;
         byte[]? certified = PublicKey(certificate.PublicKey);
-        if (Root(certificate.IssuerKeyId) is not { } issuer || certificate.Version != 1 || certificate.Algorithm != PluginSignature.Algorithm
-            || certified is null || PluginSignature.KeyId(certified) != certificate.KeyId || !VerifyData(issuer, Signed(certificate), certificate.Signature))
+        // The certificate is the countersigning root's own: one root vouches for the key and for the package.
+        if (certificate.IssuerKeyId != c.KeyId || certificate.Version != 1 || certificate.Algorithm != PluginSignature.Algorithm
+            || certified is null || PluginSignature.KeyId(certified) != certificate.KeyId || !VerifyData(root, Signed(certificate), certificate.Signature))
         {
             return Broken($"Its certificate for {certificate.PublisherName}'s key isn't one an authority this site trusts made.");
         }

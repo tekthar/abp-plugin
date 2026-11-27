@@ -56,6 +56,10 @@ namespace AbpPlugin.SampleHost.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CountersignerKeyId")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<string>("InstallPath")
                         .IsRequired()
                         .HasMaxLength(1024)

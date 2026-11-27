@@ -19,6 +19,19 @@ All notable changes to AbpPlugin are written here. The format follows
   hold is refused; one by an authority the site doesn't trust is checked as before.
 - **Upgrades keep the certified publisher:** a plugin installed countersigned takes a later version countersigned for
   the same publisher, whatever key signed it, or one signed by the same key; never another publisher's.
+- **The countersigning root is recorded** with each plugin installed countersigned (`PluginInstallation.CountersignerKeyId`),
+  so `PluginTrust.TrustedAsync` shows it untrusted once the operator drops that root.
+- **Every field is signed**, the names people are shown among them (the certificate's publisher name, the
+  countersignature's signer), and no field may hold a line break. The certificate is the countersigning root's own.
+
+### Upgrading
+
+- **One column for the host's migration:** `CountersignerKeyId` on the plugins table (nullable, 16 characters), from
+  `ConfigurePlugins`. Add a migration as for any change to the model.
+- **Countersigned packages and older sites.** A site's digest leaves the countersignature out only from this version, or
+  where its host's format already named the file in `Unsigned`. An older one that didn't counts it, and refuses a
+  countersigned package as changed since it was signed, even from a publisher whose key its admins trusted. An authority
+  serves countersigned packages to sites on 0.3.0 or later, or keeps the plain package for the others.
 
 ## [0.2.1] - 2026-11-14
 

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using AbpPlugin.Packaging;
+using Microsoft.Extensions.Configuration;
 
 namespace AbpPlugin.Tests;
 
@@ -101,6 +102,69 @@ public sealed class CountersignatureTests : IDisposable
             PluginCountersignature.Countersign(Package("uncertified"), _root.Private, "The marketplace", "acme.sample", "1.0.0",
                 Certificate(publicPem: PluginSignature.CreateKey().PublicPem)));
     }
+
+    [Fact]
+    public void The_names_people_are_shown_are_signed_too()
+    {
+        string folder = Package();
+        PluginCountersignature.Countersign(folder, _root.Private, "The marketplace", "acme.sample", "1.0.0", Certificate());
+        string path = Path.Combine(folder, PluginCountersignature.FileName);
+        string signed = File.ReadAllText(path);
+
+        JsonObject renamed = JsonNode.Parse(signed)!.AsObject();
+        renamed["certificate"]!["publisherName"] = "Someone Famous";
+        File.WriteAllText(path, renamed.ToJsonString());
+        Assert.Equal(PluginCountersignatureState.Broken, Check(folder).State);
+
+        JsonObject resigned = JsonNode.Parse(signed)!.AsObject();
+        resigned["signer"] = "Another authority";
+        File.WriteAllText(path, resigned.ToJsonString());
+        Assert.Equal(PluginCountersignatureState.Broken, Check(folder).State);
+    }
+
+    [Fact]
+    public void A_missing_field_or_a_line_break_is_refused_not_thrown()
+    {
+        string folder = Package();
+        PluginCountersignature.Countersign(folder, _root.Private, "The marketplace", "acme.sample", "1.0.0", Certificate());
+        string path = Path.Combine(folder, PluginCountersignature.FileName);
+        JsonObject file = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+        file["certificate"]!["publicKey"] = null;
+        File.WriteAllText(path, file.ToJsonString());
+        Assert.Equal(PluginCountersignatureState.Broken, Check(folder).State);
+
+        // Fields are joined by line breaks, so none may hold one: two sets of fields can never make the same text.
+        Assert.Throws<ArgumentException>(() => PluginCountersignature.Certify(_root.Private, "acme", "Acme\nCorp", PluginSignature.ReadPublicKey(_publisher.Public)!,
+            DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddYears(1)));
+        Assert.Throws<ArgumentException>(() =>
+            PluginCountersignature.Countersign(Package("lines"), _root.Private, "The marketplace", "acme.sample\n1.0.0", "1.0.0", Certificate()));
+    }
+
+    [Fact]
+    public void The_certificate_is_the_countersigning_roots_own()
+    {
+        (string Private, string Public, string KeyId) second = PluginSignature.CreateKey();
+        string folder = Package();
+        PluginCountersignature.Countersign(folder, _root.Private, "The marketplace", "acme.sample", "1.0.0", Certificate(issuerPrivate: second.Private));
+        Assert.Equal(PluginCountersignatureState.Broken, Check(folder, Root, PluginSignature.ReadPublicKey(second.Public)!).State);
+    }
+
+    [Fact]
+    public async Task A_countersigned_plugin_is_trusted_only_while_its_root_is()
+    {
+        Hosting.PluginInstallation row = new(Guid.NewGuid(), "acme.sample", "Sample", "1.0.0", isSystem: false, installPath: _work);
+        row.Signed(new Hosting.PluginSignatureCheck(Hosting.PluginSignatureKinds.Marketplace, "acme", _publisher.KeyId, "acme.sample", "1.0.0", _root.KeyId));
+        Assert.Equal(_root.KeyId, row.CountersignerKeyId);
+
+        Assert.True(await Trust(_root.Public).TrustedAsync(row, default));
+        Assert.False(await Trust(PluginSignature.CreateKey().PublicPem).TrustedAsync(row, default)); // its root dropped, another set
+        Assert.False(await Trust().TrustedAsync(row, default));
+    }
+
+    private static Hosting.PluginTrust Trust(params string[] roots) => new(null!,
+        new Microsoft.Extensions.Configuration.ConfigurationBuilder().AddInMemoryCollection(
+            roots.Select((r, i) => new KeyValuePair<string, string?>($"PluginHost:CountersignerRoots:{i}", r))).Build(),
+        Microsoft.Extensions.Logging.Abstractions.NullLogger<Hosting.PluginTrust>.Instance);
 
     [Fact]
     public void What_is_signed_starts_with_the_formats_labels()

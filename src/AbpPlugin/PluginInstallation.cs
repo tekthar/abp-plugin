@@ -58,5 +58,9 @@ public class PluginInstallation : Entity<Guid>
 
     public string? SignerKeyId { get; set; }
 
-    public void Signed(PluginSignatureCheck check) => (SignatureKind, Signer, SignerKeyId) = (check.Kind, check.Signer, check.KeyId);
+    /// <summary>For a countersigned one, the id of the root that countersigned it, so dropping that root shows it untrusted.</summary>
+    public string? CountersignerKeyId { get; set; }
+
+    public void Signed(PluginSignatureCheck check) =>
+        (SignatureKind, Signer, SignerKeyId, CountersignerKeyId) = (check.Kind, check.Signer, check.KeyId, check.RootKeyId);
 }

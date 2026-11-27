@@ -44,9 +44,11 @@ public static class PluginSignatureKinds
 
 /// <summary>
 /// A package's signature, checked: its kind, who signed it (as the key's owner is known here; for a countersigned one, the
-/// certified publisher's slug), the key's id, and for a countersigned one, the app ID and version it was countersigned for.
+/// certified publisher's slug), the key's id, and for a countersigned one, the app ID and version it was countersigned for
+/// and the id of the root that countersigned it.
 /// </summary>
-public sealed record PluginSignatureCheck(string Kind, string? Signer = null, string? KeyId = null, string? Listing = null, string? ListingVersion = null);
+public sealed record PluginSignatureCheck(string Kind, string? Signer = null, string? KeyId = null, string? Listing = null, string? ListingVersion = null,
+    string? RootKeyId = null);
 
 /// <summary>
 /// Which plugins a site runs. System plugins, from the image or claiming to be,
@@ -152,7 +154,8 @@ public sealed class PluginTrust(IServiceScopeFactory scopes, IConfiguration conf
 
         if (counter is { State: PluginCountersignatureState.Holds, File: { } countersigned })
         {
-            return new PluginSignatureCheck(PluginSignatureKinds.Marketplace, countersigned.Certificate.Publisher, file.KeyId, countersigned.Listing, countersigned.ListingVersion);
+            return new PluginSignatureCheck(PluginSignatureKinds.Marketplace, countersigned.Certificate.Publisher, file.KeyId, countersigned.Listing,
+                countersigned.ListingVersion, countersigned.KeyId);
         }
 
         if (await FindPublisherAsync(file.KeyId, cancellationToken) is { } publisher)
@@ -298,12 +301,15 @@ public sealed class PluginTrust(IServiceScopeFactory scopes, IConfiguration conf
 
     /// <summary>
     /// Whether a plugin's signer is still trusted here: a release key, a publisher still on the list, or for a countersigned
-    /// one, an authority the server still trusts.
+    /// one, the root that countersigned it still among the server's (its operator drops a root that leaked or was replaced).
     /// </summary>
     public async Task<bool> TrustedAsync(PluginInstallation row, CancellationToken cancellationToken) =>
-        row.SignerKeyId is { } keyId && (ReleaseKeys.Any(k => k.KeyId == keyId)
-            || (row.SignatureKind == PluginSignatureKinds.Marketplace && CountersignerRoots.Count > 0)
-            || await FindPublisherAsync(keyId, cancellationToken) is not null);
+        row.SignerKeyId is { } keyId && (row.SignatureKind == PluginSignatureKinds.Marketplace
+            ? IsCountersignerRoot(row.CountersignerKeyId)
+            : ReleaseKeys.Any(k => k.KeyId == keyId) || await FindPublisherAsync(keyId, cancellationToken) is not null);
+
+    /// <summary>Whether a root's key id is one of the countersigning roots this server trusts now.</summary>
+    public bool IsCountersignerRoot(string? keyId) => keyId is not null && CountersignerRoots.Any(r => PluginSignature.KeyId(r) == keyId);
 
     /// <summary>Whether unsigned plugins go in now: the admins allow them, where the server lets them.</summary>
     public async Task<bool> AllowUnsignedAsync(CancellationToken cancellationToken)

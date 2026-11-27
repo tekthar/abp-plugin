@@ -77,6 +77,7 @@ public static class PluginsModel
             b.Property(p => p.SignatureKind).HasMaxLength(16);
             b.Property(p => p.Signer).HasMaxLength(200);
             b.Property(p => p.SignerKeyId).HasMaxLength(16);
+            b.Property(p => p.CountersignerKeyId).HasMaxLength(16);
             b.HasKey(p => p.Id);
             b.HasIndex(p => p.Key).IsUnique();
             b.Property(p => p.Key).HasMaxLength(129).IsRequired();
