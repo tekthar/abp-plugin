@@ -6,6 +6,12 @@ All notable changes to AbpPlugin are written here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-27
+
+Countersigned packages: a site that trusts a countersigning authority's root (a marketplace) takes the packages it
+countersigned as their certified publisher's, without the publisher's key added by hand. One column for the host's
+migration (Upgrading, below). `@abpjs/plugin-web` moves to 0.3.0 with the packages, unchanged.
+
 ### Added
 
 - **Countersigned packages.** `AbpPlugin.Packaging`'s `PluginCountersignature` certifies a publisher's key
